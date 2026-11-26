@@ -1,0 +1,5 @@
+import {createServerFn} from '@tanstack/react-start';
+import {z} from 'zod';
+const fields=z.object({id:z.number().int().positive().optional(),name:z.string().trim().min(1).max(200),category:z.string().trim().min(1).max(80),venue:z.string().trim().min(1).max(200),description:z.string().max(4000),image_url:z.union([z.literal(''),z.string().url().refine(v=>v.startsWith('https://'))]),starts_at:z.string().datetime(),capacity:z.number().int().min(1).max(100000),published:z.boolean(),registration_open:z.boolean(),team_enabled:z.boolean()});
+export const listCatalog=createServerFn({method:'POST'}).handler(async()=>{const a=await import('../server/auth.server');const s=await import('../server/catalog.server');return a.guarded(['admin'],()=>s.listCatalog());});
+export const saveCatalog=createServerFn({method:'POST'}).validator(fields).handler(async({data})=>{const a=await import('../server/auth.server');const s=await import('../server/catalog.server');return a.guarded(['admin'],()=>s.saveCatalog(data));});

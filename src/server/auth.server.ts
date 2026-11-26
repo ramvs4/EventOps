@@ -33,7 +33,7 @@ const codeOf = (err: unknown) => (err as { code?: string }).code;
 // Creates the account tables (and the demo accounts) when they are missing. Never deletes anything.
 // Uses the same lock as the event setup, so two visitors arriving together cannot clash.
 export async function ensureAuthSetup(): Promise<void> {
-  const seedDemo = process.env.DEMO_ACCOUNTS !== "off";
+  const seedDemo = process.env['DEMO_ACCOUNTS'] !== "off";
   const demo = seedDemo
     ? await Promise.all(DEMO_ACCOUNTS.map(async (a) => ({ ...a, hash: await hashPassword(a.password) })))
     : [];
@@ -85,7 +85,7 @@ async function startSession(userId: number): Promise<void> {
   setCookie(COOKIE, token, {
     httpOnly: true, // page scripts can never read it
     sameSite: "lax", // other sites cannot send it with a form post
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env['NODE_ENV'] === "production",
     path: "/",
     maxAge: SESSION_DAYS * 24 * 60 * 60,
   });
@@ -153,6 +153,24 @@ export async function guarded<T>(
     return { ok: true, data: await work(gate.user) };
   } catch (err) {
     console.error("[auth] guarded call failed:", err);
+    const safeMessages = new Set([
+      "Select an event",
+      "Registration closed",
+      "Already registered or event full",
+      "Team name required",
+      "Teams unavailable",
+      "You already belong to a team for this event",
+      "Team name already exists",
+      "Team not found",
+      "Team full or already joined"
+    ]);
+    if (err instanceof Error && safeMessages.has(err.message)) {
+      return {
+        ok: false,
+        problem: err.message,
+        hint: "Check your selection and try again."
+      };
+    }
     return { ok: false, ...describeError(err) };
   }
 }
@@ -309,7 +327,7 @@ export function createUser(
 // Event name and start time are not secret, so the entry page may show a countdown before sign-in.
 // Any problem just means "no countdown": the sign-in form must never depend on this.
 export async function publicInfo(): Promise<PublicInfo> {
-  const demoLogins = process.env.DEMO_ACCOUNTS !== "off";
+  const demoLogins = process.env['DEMO_ACCOUNTS'] !== "off";
   try {
     const r = await getPool().query<{ name: string; start_ms: number }>(
       `select name, floor(extract(epoch from starts_at) * 1000)::float8 as start_ms

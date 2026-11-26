@@ -27,6 +27,7 @@ export type Severity = "Critical" | "High" | "Medium" | "Low";
 export type Issue = { id: number; title: string; severity: Severity; status: "Open" | "Resolved" };
 
 export type BudgetLine = { id: number; head: string; spent: number; total: number };
+export type Expense = { id: number; categoryId: number; amount: number; note: string; spentOn: string };
 export type Sponsor = { id: number; name: string; amount: number; status: "Paid" | "Pending"; note: string };
 export type ScheduleItem = { id: number; title: string; venue: string; at: number };
 export type ActivityItem = { id: number; text: string; at: number };
@@ -40,6 +41,7 @@ export type EventData = {
   issues: Issue[];
   resolvedEarlier: number; // issues already resolved before this session
   budget: BudgetLine[];
+  expenses: Expense[];
   sponsors: Sponsor[];
   schedule: ScheduleItem[];
   activity: ActivityItem[];
@@ -57,6 +59,7 @@ export const EMPTY_STATE: EventState = {
   issues: [],
   resolvedEarlier: 0,
   budget: [],
+  expenses: [],
   sponsors: [],
   schedule: [],
   activity: [],

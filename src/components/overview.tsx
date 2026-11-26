@@ -1,3 +1,4 @@
+import { EventCatalog } from "./event-catalog";
 import { CheckCircle2, ClipboardCheck, Clock, IndianRupee, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function Overview() {
         }
       />
 
+      <EventCatalog />
       <MissionBrief />
 
       <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

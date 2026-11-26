@@ -13,8 +13,8 @@ export function placeTask(tasks: Task[], id: number, status: TaskStatus, index: 
   const target = columnOf(others, status);
   const at = Math.max(0, Math.min(index, target.length));
   const blockedReason =
-    status === "Blocked" ? reason.trim() || (moving.status === "Blocked" ? moving.blockedReason : "") : "";
-  const updated: Task = { ...moving, status, blockedReason };
+    status === "Blocked" ? reason.trim() || (moving.status === "Blocked" ? (moving.note ?? "") : "") : "";
+  const updated: Task = { ...moving, status, note: blockedReason };
 
   const result: Task[] = [];
   for (const stage of TASK_STAGES) {

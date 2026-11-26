@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ParticipantHome } from "@/components/portal/participant-home";
+import { ParticipantApp } from "@/components/portal/participant-interactive";
 
-export const Route = createFileRoute("/participant/")({ component: ParticipantHome });
+export const Route = createFileRoute("/participant/")({
+  component: ParticipantApp,
+});

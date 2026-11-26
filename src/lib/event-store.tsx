@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  addExpenseApi,
   addIssueApi,
   addTaskApi,
   getEventData,
@@ -40,6 +41,7 @@ type Action =
   | { type: "add_task"; title: string; priority: Priority; due: string; now: number }
   | { type: "move_task"; id: number; now: number }
   | { type: "add_issue"; title: string; severity: Severity; now: number }
+  | { type: "add_expense"; categoryId: number; amount: number; note: string; spentOn: string; now: number }
   | { type: "resolve_issue"; id: number; now: number };
 
 const tempId = (now: number) => -now;
@@ -79,11 +81,19 @@ function reducer(state: EventState, action: Action): EventState {
       return {
         ...state,
         tasks: state.tasks.map((t) =>
-          t.id === task.id ? { ...t, status: next, note: next === "Blocked" ? t.note : "" } : t,
+          t.id === task.id ? { ...t, status: next, note: next === "Blocked" ? (t.note ?? "") : "" } : t,
         ),
         activity: log(state, `${task.title} moved to ${next}`, action.now),
       };
     }
+
+    case "add_expense":
+      return {
+        ...state,
+        expenses: [{ id: tempId(action.now), categoryId: action.categoryId, amount: action.amount, note: action.note, spentOn: action.spentOn }, ...state.expenses].sort((a, b) => b.spentOn.localeCompare(a.spentOn)),
+        budget: state.budget.map((b) => b.id === action.categoryId ? { ...b, spent: b.spent + action.amount } : b),
+        activity: log(state, "Expense added", action.now),
+      };
 
     case "add_issue":
       return {
@@ -119,6 +129,7 @@ type Store = {
   dismissSaveError: () => void;
   addTask: (title: string, priority: Priority, due: string) => void;
   moveTask: (id: number) => void;
+  addExpense: (categoryId: number, amount: number, note: string, spentOn: string) => void;
   addIssue: (title: string, severity: Severity) => void;
   resolveIssue: (id: number) => void;
   resetDemo: () => Promise<boolean>; // true when the reset worked
@@ -240,6 +251,11 @@ export function EventStoreProvider({ children }: { children: ReactNode }) {
         if (!next) return;
         dispatch({ type: "move_task", id, now: Date.now() });
         void persist(() => setTaskStatusApi({ data: { id, status: next } }));
+      },
+
+      addExpense: (categoryId, amount, note, spentOn) => {
+        dispatch({ type: "add_expense", categoryId, amount, note, spentOn, now: Date.now() });
+        void persist(() => addExpenseApi({ data: { categoryId, amount, note, spentOn } }));
       },
 
       addIssue: (title, severity) => {

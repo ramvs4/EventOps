@@ -4,7 +4,7 @@ import type { Pool, PoolClient } from "pg";
 import resetSql from "../../db/reset.sql?raw";
 import schemaSql from "../../db/schema.sql?raw";
 import seedSql from "../../db/seed.sql?raw";
-import type { EventData, Priority, Severity, TaskStatus } from "../lib/event-data";
+import type { Expense, EventData, Priority, Severity, TaskStatus } from "../lib/event-data";
 import { getPool } from "./db.server";
 
 export type ApiProblem = { problem: string; hint: string };
@@ -110,7 +110,7 @@ export async function loadEventData(db: Db = getPool()): Promise<EventData> {
 }
 
 async function readEventData(db: Db): Promise<EventData> {
-  const [ev, tasks, resources, issues, budget, sponsors, schedule, activity] = await Promise.all([
+  const [ev, tasks, resources, issues, budget, expenses, sponsors, schedule, activity] = await Promise.all([
     db.query<{ name: string; start_ms: number; resolved_before: number }>(
       `select name, floor(extract(epoch from starts_at) * 1000)::float8 as start_ms,
               issues_resolved_before as resolved_before
@@ -131,6 +131,13 @@ async function readEventData(db: Db): Promise<EventData> {
       `select c.id, c.head, c.planned_amount as total, coalesce(sum(e.amount), 0)::int as spent
          from budget_categories c left join expenses e on e.category_id = c.id
         group by c.id order by c.id`,
+    ),
+    db.query<Expense>(
+      `select e.id, e.category_id as "categoryId", e.amount, e.note,
+              to_char(e.spent_on, 'YYYY-MM-DD') as "spentOn"
+         from expenses e join budget_categories c on c.id = e.category_id
+        where c.event_id = (select id from events order by id limit 1)
+        order by e.spent_on desc, e.id desc`,
     ),
     db.query<{ id: number; name: string; amount: number; status: "Paid" | "Pending"; note: string }>(
       `select id, name, amount, status, note from sponsors order by id`,
@@ -156,6 +163,7 @@ async function readEventData(db: Db): Promise<EventData> {
     resources: resources.rows,
     issues: issues.rows,
     budget: budget.rows,
+    expenses: expenses.rows,
     sponsors: sponsors.rows,
     schedule: schedule.rows,
     activity: activity.rows,
@@ -205,6 +213,18 @@ export const setTaskStatus = (id: number, status: TaskStatus) =>
     const task = r.rows[0];
     if (!task) throw new Error("NOT_FOUND");
     await log(c, eventId, `${task.title} moved to ${status}`);
+  });
+
+export const createExpense = (categoryId: number, amount: number, note: string, spentOn: string) =>
+  change(async (c, eventId) => {
+    const r = await c.query(
+      `insert into expenses (category_id, amount, note, spent_on)
+       select id, $2, $3, $4::date from budget_categories
+        where id = $1 and event_id = $5 returning id`,
+      [categoryId, amount, note, spentOn, eventId],
+    );
+    if (!r.rows.length) throw new Error("NOT_FOUND");
+    await log(c, eventId, `Expense added: ${note || amount}`);
   });
 
 export const createIssue = (title: string, severity: Severity) =>

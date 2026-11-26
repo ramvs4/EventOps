@@ -148,3 +148,28 @@ create table if not exists shift_slots (
   created_at timestamptz not null default now()
 );
 create index if not exists shift_slots_user_idx on shift_slots (user_id, starts_at);
+
+create table if not exists participant_events (id integer primary key, title text not null, category text not null, date timestamptz not null, location text not null, image text not null, description text not null, capacity integer not null check(capacity>0));
+create table if not exists participant_registrations (user_id integer references users(id) on delete cascade, event_id integer references participant_events(id) on delete cascade, primary key(user_id,event_id));
+create table if not exists participant_teams (id serial primary key, name text not null, event_id integer not null references participant_events(id));
+create unique index if not exists participant_team_name on participant_teams(lower(name));
+create table if not exists participant_members (team_id integer references participant_teams(id) on delete cascade, user_id integer references users(id) on delete cascade, primary key(team_id,user_id));
+create table if not exists participant_announcements (id serial primary key, title text not null, body text not null, created_at timestamptz not null default now());
+
+-- EventOps shared catalog v1
+alter table events add column if not exists category text not null default 'General';
+alter table events add column if not exists venue text not null default '';
+alter table events add column if not exists description text not null default '';
+alter table events add column if not exists image_url text not null default '';
+alter table events add column if not exists capacity integer not null default 100 check (capacity > 0);
+alter table events add column if not exists published boolean not null default false;
+alter table events add column if not exists registration_open boolean not null default false;
+alter table events add column if not exists team_enabled boolean not null default false;
+
+-- shared participant v2
+create table if not exists event_registrations(user_id integer not null references users(id) on delete cascade,event_id integer not null references events(id) on delete cascade,ticket_ref text not null unique default gen_random_uuid()::text,primary key(user_id,event_id));
+create table if not exists event_teams(id serial primary key,event_id integer not null references events(id) on delete cascade,name text not null,unique(id,event_id));
+create unique index if not exists event_teams_name on event_teams(event_id,lower(name));
+create table if not exists event_team_members(team_id integer not null,event_id integer not null,user_id integer not null references users(id) on delete cascade,foreign key(team_id,event_id) references event_teams(id,event_id) on delete cascade,primary key(event_id,user_id));
+create index if not exists event_registrations_event on event_registrations(event_id);
+create index if not exists event_team_members_team on event_team_members(team_id);

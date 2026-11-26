@@ -38,7 +38,7 @@ function Frame({ role, children }: { role: PortalRole; children: ReactNode }) {
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <main className={role === "participant" ? "w-full min-w-0 p-0" : "mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8"}>{children}</main>
     </div>
   );
 }
